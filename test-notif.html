@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Notificaciones</title>
+<style>
+  body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #111; color: #fff; gap: 20px; }
+  button { padding: 16px 32px; font-size: 18px; border-radius: 12px; border: none; cursor: pointer; background: #4ade80; color: #000; font-weight: bold; }
+  #estado { font-size: 14px; color: #aaa; text-align: center; max-width: 300px; }
+</style>
+</head>
+<body>
+
+<h2>🔔 Test Notificaciones</h2>
+<button onclick="programar()">Enviar notificación en 1 minuto</button>
+<div id="estado">Pulsa el botón para programar una notificación de prueba</div>
+
+<script>
+const estado = document.getElementById('estado');
+
+// Registrar service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw-test.js')
+    .then(reg => {
+      estado.textContent = '✅ Service Worker registrado. Listo para probar.';
+      console.log('SW registrado:', reg.scope);
+    })
+    .catch(err => {
+      estado.textContent = '❌ Error SW: ' + err;
+      console.error(err);
+    });
+}
+
+function programar() {
+  if (!('Notification' in window)) {
+    estado.textContent = '❌ Tu navegador no soporta notificaciones';
+    return;
+  }
+
+  const enviar = () => {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.active.postMessage({ tipo: 'test', ms: 60000 });
+      estado.textContent = '⏳ Notificación programada para dentro de 1 minuto. Puedes cerrar la app.';
+    });
+  };
+
+  if (Notification.permission === 'granted') {
+    enviar();
+  } else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') enviar();
+      else estado.textContent = '❌ Permiso denegado';
+    });
+  } else {
+    estado.textContent = '❌ Permiso denegado. Actívalo en ajustes.';
+  }
+}
+</script>
+</body>
+</html>
