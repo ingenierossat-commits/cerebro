@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Notificaciones v2</title>
+<style>
+  body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #111; color: #fff; gap: 20px; padding: 20px; box-sizing: border-box; }
+  button { padding: 16px 32px; font-size: 18px; border-radius: 12px; border: none; cursor: pointer; background: #4ade80; color: #000; font-weight: bold; }
+  #estado { font-size: 14px; color: #aaa; text-align: center; max-width: 320px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h2>🔔 Test Notif v2</h2>
+<button onclick="programar()">Notificación en 1 minuto</button>
+<div id="estado">Pulsa el botón...</div>
+
+<script>
+const estado = document.getElementById('estado');
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw-test2.js')
+    .then(reg => {
+      estado.textContent = '✅ SW registrado. Listo.';
+    })
+    .catch(err => {
+      estado.textContent = '❌ Error SW: ' + err;
+    });
+}
+
+async function programar() {
+  if (!('Notification' in window)) {
+    estado.textContent = '❌ No soporta notificaciones';
+    return;
+  }
+
+  let permiso = Notification.permission;
+  if (permiso === 'default') {
+    permiso = await Notification.requestPermission();
+  }
+  if (permiso !== 'granted') {
+    estado.textContent = '❌ Permiso denegado';
+    return;
+  }
+
+  const reg = await navigator.serviceWorker.ready;
+
+  // Intentar showTrigger (Chrome Android moderno)
+  if ('showTrigger' in Notification) {
+    const tiempo = Date.now() + 60000; // 1 minuto
+    await reg.showNotification('🔔 Test Notificación', {
+      body: '¡Funciona con showTrigger!',
+      icon: 'icon-192.png',
+      showTrigger: new TimestampTrigger(tiempo),
+      vibrate: [200, 100, 200]
+    });
+    estado.textContent = '⏳ Programada con showTrigger para dentro de 1 min. Cierra la app.';
+  } else {
+    // Fallback: enviar al SW con postMessage
+    reg.active.postMessage({ tipo: 'test', ms: 60000 });
+    estado.textContent = '⏳ showTrigger no disponible, usando SW postMessage. Cierra la app y espera 1 min.';
+  }
+}
+</script>
+</body>
+</html>
