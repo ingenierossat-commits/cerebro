@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d0d0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Second Memory">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon512.png">
+<title>Second Memory</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0d; --ink: #f0ede6; --ink2: #757575; --ink3: #2e2c2a;
+  --inkt: #757575; --paper: #161614; --paper2: #1e1e1b;
+  --amber: #e8a030; --red: #e05555; --green: #4caf7d; --blue: #5b9bd5;
+  --r: 12px; --mono: 'IBM Plex Mono', monospace; --serif: 'Instrument Serif', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 13px; min-height: 100%; display: flex; flex-direction: column; }
+
+/* ── CAPAS AUTH ── */
+.auth-layer {
+  position: fixed; inset: 0; background: var(--bg);
+  display: none; align-items: center; justify-content: center;
+  z-index: 2000; padding: 20px;
+}
+.auth-layer.show { display: flex; }
+
+/* ── CAJAS ── */
+.auth-box {
+  background: var(--paper); border: 1px solid var(--ink3);
+  border-radius: var(--r); padding: 28px 24px;
+  width: 100%; max-width: 380px;
+}
+.auth-box h2 {
+  font-family: 'Georgia', serif; font-size: 20px; letter-spacing: 4px;
+  background: linear-gradient(90deg,#073160 0%,#147ca8 65%,#5ea7d5 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin-bottom: 4px;
+}
+.auth-box .sub { font-size: 10px; color: var(--inkt); letter-spacing: .1em; margin-bottom: 20px; }
+
+/* LISTA USUARIOS */
+.user-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; min-height: 20px; }
+.user-btn {
+  background: var(--paper2); border: 1px solid var(--ink3); border-radius: 8px;
+  padding: 11px 14px; color: var(--ink); font-family: var(--mono); font-size: 13px;
+  cursor: pointer; text-align: left; transition: border-color .2s; width: 100%;
+}
+.user-btn:hover { border-color: var(--blue); color: var(--blue); }
+.user-sep { font-size: 10px; color: var(--inkt); text-align: center; margin: 8px 0; letter-spacing: .1em; }
+.new-user-wrap { display: flex; gap: 8px; }
+.new-user-input {
+  flex: 1; background: var(--bg); border: 1px solid var(--ink3); border-radius: 8px;
+  padding: 9px 12px; color: var(--ink); font-family: var(--mono); font-size: 13px; outline: none;
+}
+.new-user-input:focus { border-color: var(--blue); }
+.new-user-input::placeholder { color: var(--inkt); }
+.btn-create {
+  background: var(--blue); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 14px; font-family: var(--mono); font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.btn-create:hover { opacity: .85; }
+
+/* PIN */
+.pin-box {
+  background: var(--paper); border: 1px solid var(--ink3);
+  border-radius: var(--r); padding: 28px 24px;
+  width: 100%; max-width: 320px; text-align: center;
+}
+.pin-box h3 { font-family: 'Georgia', serif; font-size: 16px; color: var(--ink); margin-bottom: 4px; }
+.pin-box .sub { font-size: 10px; color: var(--inkt); margin-bottom: 20px; letter-spacing: .1em; }
+.pin-dots { display: flex; justify-content: center; gap: 12px; margin-bottom: 20px; }
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--ink3); background: transparent;
+  transition: background .15s, border-color .15s;
+}
+.pin-dot.filled { background: var(--blue); border-color: var(--blue); }
+.pin-dot.error  { background: var(--red);  border-color: var(--red);  }
+.pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.pin-key {
+  background: var(--paper2); border: 1px solid var(--ink3); border-radius: 8px;
+  padding: 14px 0; font-family: var(--mono); font-size: 18px; color: var(--ink);
+  cursor: pointer; transition: border-color .15s, background .15s; user-select: none;
+}
+.pin-key:hover  { border-color: var(--blue); }
+.pin-key:active { background: var(--ink3); }
+.pin-key.del    { font-size: 14px; color: var(--inkt); }
+.pin-key.volver { font-size: 11px; color: var(--inkt); letter-spacing: .05em; }
+.pin-msg { font-size: 11px; color: var(--red); margin-top: 12px; min-height: 16px; }
+
+/* SETPIN PASOS */
+.setpin-step { display: none; }
+.setpin-step.active { display: block; }
+
+/* ── HEADER ── */
+.hdr { padding: 10px 18px; border-bottom: 1px solid var(--ink3); display: flex; align-items: center; gap: 14px; }
+.hdr-text { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.hdr-title {
+  font-family: 'Georgia', serif; font-size: 22px; font-weight: 700; letter-spacing: 5px; line-height: 1;
+  background: linear-gradient(90deg,#073160 0%,#1f4c76 30%,#147ca8 65%,#5ea7d5 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap;
+}
+.hdr-sub { font-size: 9px; color: #757575; text-transform: uppercase; letter-spacing: .52em; }
+.hdr-user { font-size: 10px; color: var(--blue); cursor: pointer; text-decoration: underline; flex-shrink: 0; white-space: nowrap; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-8px);
+  background: var(--paper2); border: 1px solid var(--ink3); border-radius: 10px;
+  padding: 10px 18px; font-size: 13px; color: var(--ink);
+  opacity: 0; transition: opacity .25s, transform .25s;
+  z-index: 999; max-width: 90vw; white-space: normal; text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { border-color: var(--green); color: var(--green); }
+.toast.err { border-color: var(--red);   color: var(--red);   }
+.toast.info{ border-color: var(--amber); color: var(--amber); }
+
+/* ── MAIN ── */
+.main { flex: 1; padding: 20px 16px 30px; display: flex; flex-direction: column; gap: 16px; max-width: 560px; margin: 0 auto; width: 100%; }
+.section { background: var(--paper); border: 1px solid var(--ink3); border-radius: var(--r); overflow: hidden; }
+.section-header { padding: 10px 14px 8px; border-bottom: 1px solid var(--ink3); display: flex; align-items: center; gap: 10px; }
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: 2px; flex: 1; color: var(--inkt); }
+.label-guardar { color: var(--green); }
+.label-recordar { color: var(--blue); }
+.label-borrar   { color: var(--red); }
+.section-body { padding: 10px 12px; }
+.input-wrap { display: flex; gap: 8px; align-items: flex-end; }
+.textarea {
+  flex: 1; background: var(--bg); border: 1px solid var(--ink3); border-radius: 8px;
+  padding: 9px 12px; color: var(--ink); font-family: var(--serif); font-size: 15px;
+  outline: none; resize: none; min-height: 44px; max-height: 100px;
+  line-height: 1.4; transition: border-color .2s; overflow-y: auto; width: 100%;
+}
+.textarea:focus { border-color: var(--ink2); }
+.textarea::placeholder { color: var(--inkt); font-style: italic; }
+.btn-group { display: flex; flex-direction: column; gap: 6px; }
+.btn-action {
+  border: none; border-radius: 8px; width: 40px; height: 40px;
+  cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s, transform .1s; flex-shrink: 0;
+}
+.btn-action:hover { opacity: .85; }
+.btn-action:active { transform: scale(.95); }
+.btn-send-g { background: var(--green); color: #0d0d0d; }
+.btn-send-r { background: var(--blue);  color: #fff; }
+.btn-send-b { background: var(--red);   color: #fff; }
+.btn-mic {
+  background: var(--ink3); color: var(--inkt); border: none; border-radius: 8px;
+  width: 40px; height: 40px; cursor: pointer; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; transition: all .2s; flex-shrink: 0;
+}
+.btn-mic:hover { background: var(--paper2); color: var(--ink); }
+.btn-mic.grabando { background: var(--red); color: #fff; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+.hint-sec { font-size: 10px; color: var(--inkt); margin-top: 7px; line-height: 1.6; }
+.resultados { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.res-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--bg); border: 1px solid var(--ink3); border-radius: 8px;
+  padding: 9px 11px; transition: border-color .15s, background .15s;
+}
+.res-item.checked { background: rgba(224,85,85,.07); border-color: var(--red); }
+.res-check { width: 16px; height: 16px; accent-color: var(--red); cursor: pointer; flex-shrink: 0; margin-top: 3px; }
+.res-text { flex: 1; font-family: var(--serif); font-size: 14px; line-height: 1.4; color: var(--ink); word-break: break-word; }
+.res-fecha { font-size: 10px; color: var(--inkt); margin-top: 2px; }
+mark { background: rgba(224,85,85,.25); color: var(--ink); border-radius: 2px; padding: 0 1px; }
+.btn-borrar-sel {
+  margin-top: 8px; background: var(--red); color: #fff; border: none; border-radius: 8px;
+  padding: 9px 16px; font-family: var(--mono); font-size: 12px; cursor: pointer; width: 100%; transition: opacity .15s;
+}
+.btn-borrar-sel:hover { opacity: .85; }
+.btn-borrar-sel:disabled { opacity: .3; cursor: default; }
+.respuesta {
+  margin-top: 10px; background: var(--bg); border: 1px solid var(--ink3);
+  border-left: 3px solid var(--blue); border-radius: 8px; padding: 10px 13px;
+  font-family: var(--serif); font-size: 15px; line-height: 1.5; color: var(--ink); display: none;
+}
+.respuesta.show { display: block; }
+.btn-ok-r {
+  background: transparent; border: 1px solid var(--ink3); border-radius: 8px;
+  width: 40px; height: 40px; color: var(--inkt); font-family: var(--mono); font-size: 11px;
+  cursor: pointer; display: none; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.btn-ok-r.activo { display: flex; color: var(--blue); border-color: var(--blue); }
+.footer { text-align: center; padding: 10px; font-size: 10px; color: var(--inkt); border-top: 1px solid var(--ink3); flex-shrink: 0; }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--ink3); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- PANTALLA 1: SELECCIÓN USUARIO -->
+<div class="auth-layer show" id="layer-usuarios">
+  <div class="auth-box">
+    <h2>SECOND MEMORY</h2>
+    <p class="sub">¿QUIÉN ERES?</p>
+    <div class="user-list" id="user-list">
+      <div style="text-align:center;padding:10px"><span class="spinner"></span></div>
+    </div>
+    <div class="user-sep">— O CREA UN USUARIO NUEVO —</div>
+    <div class="new-user-wrap">
+      <input class="new-user-input" id="nuevo-nombre" type="text" maxlength="20" placeholder="Nombre...">
+      <button class="btn-create" id="btn-crear">Crear</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA 2: SET PIN (nuevo usuario) -->
+<div class="auth-layer" id="layer-setpin">
+  <div class="pin-box">
+    <div class="setpin-step active" id="setpin-p1">
+      <h3 id="setpin-tit1">NUEVO USUARIO</h3>
+      <p class="sub">ELIGE UN PIN DE 4 DÍGITOS</p>
+      <div class="pin-dots" id="setpin-dots1">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="pin-keypad" id="setpin-kp1"></div>
+      <div class="pin-msg" id="setpin-msg1"></div>
+    </div>
+    <div class="setpin-step" id="setpin-p2">
+      <h3 id="setpin-tit2">NUEVO USUARIO</h3>
+      <p class="sub">CONFIRMA EL PIN</p>
+      <div class="pin-dots" id="setpin-dots2">
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div class="pin-keypad" id="setpin-kp2"></div>
+      <div class="pin-msg" id="setpin-msg2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA 3: LOGIN PIN -->
+<div class="auth-layer" id="layer-pin">
+  <div class="pin-box">
+    <h3 id="pin-tit">USUARIO</h3>
+    <p class="sub">INTRODUCE TU PIN</p>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+      <div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-keypad" id="pin-kp"></div>
+    <div class="pin-msg" id="pin-msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="hdr" id="app-hdr" style="display:none">
+  <div class="hdr-text">
+    <div class="hdr-title">SECOND MEMORY</div>
+    <div class="hdr-sub" id="hdr-usuario">—</div>
+  </div>
+  <span class="hdr-user" id="btn-cambiar-usuario">Cambiar usuario</span>
+</div>
+
+<div class="main" id="app-main" style="display:none">
+  <div class="section">
+    <div class="section-header"><span class="section-label label-guardar">GUARDAR</span></div>
+    <div class="section-body">
+      <div class="input-wrap">
+        <textarea class="textarea" id="txtGuardar" rows="1"
+          placeholder="Escribe o di lo que quieres recordar..."
+          oninput="autoResize(this)"></textarea>
+        <div class="btn-group">
+          <button class="btn-action btn-send-g" id="btn-guardar" title="Guardar">↑</button>
+          <button class="btn-mic" id="micGuardar" title="Voz">🎙</button>
+        </div>
+      </div>
+      <div class="hint-sec">Empieza con <b style="color:var(--green)">Fecha.</b> para guardar un aviso.<br>Ej: <i>Fecha. dentista el 15 de abril</i></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><span class="section-label label-recordar">RECORDAR</span></div>
+    <div class="section-body">
+      <div class="input-wrap">
+        <textarea class="textarea" id="txtRecordar" rows="1"
+          placeholder="¿Qué quieres que te recuerde?..."
+          oninput="autoResize(this)"></textarea>
+        <div class="btn-group">
+          <button class="btn-action btn-send-r" id="btn-recordar" title="Buscar">?</button>
+          <button class="btn-mic" id="micRecordar" title="Voz">🎙</button>
+          <button class="btn-ok-r" id="btnOkRecordar" title="OK">OK</button>
+        </div>
+      </div>
+      <div class="respuesta" id="respuesta"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><span class="section-label label-borrar">BORRAR</span></div>
+    <div class="section-body">
+      <div class="input-wrap">
+        <textarea class="textarea" id="txtBorrar" rows="1"
+          placeholder="Palabra clave para buscar entradas..."
+          oninput="autoResize(this)"></textarea>
+        <div class="btn-group">
+          <button class="btn-action btn-send-b" id="btn-borrar" title="Buscar">🔍</button>
+          <button class="btn-mic" id="micBorrar" title="Voz">🎙</button>
+        </div>
+      </div>
+      <div class="hint-sec">Escribe o di una palabra y te mostraré las entradas relacionadas.</div>
+      <div class="resultados" id="resultados"></div>
+      <button class="btn-borrar-sel" id="btnBorrarSel" disabled style="display:none">🗑 Borrar seleccionadas</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer" id="app-footer" style="display:none">0 notas guardadas</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, get, set, push, remove, onValue }
+  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  CONFIGURA TU FIREBASE AQUÍ
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const FB = {
+  apiKey:            "AIzaSyChMXx5ZcleAo5oqzPvo1K_Af_wgQkh-LQ",
+  authDomain:        "listify-16b5d.firebaseapp.com",
+  databaseURL:       "https://listify-16b5d-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "listify-16b5d",
+  storageBucket:     "listify-16b5d.appspot.com",
+  messagingSenderId: "238610923350",
+  appId:             "1:238610923350:web:cd5c2c3fb23b5c0afba0f7"
+};
+const app = initializeApp(FB);
+const db  = getDatabase(app);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  ESTADO
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const LS_KEY = 'sm_usuario_activo';
+let usuario = null;
+let memos   = [];
+let unsub   = null;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  UTILIDADES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function sha256(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+const delay = ms => new Promise(r => setTimeout(r, ms));
+
+let _toastTimer;
+function toast(txt, tipo='ok', ms=3000) {
+  const el = document.getElementById('toast');
+  el.textContent = txt; el.className = 'toast show ' + tipo;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+function show(id)  { document.getElementById(id).classList.add('show'); }
+function hide(id)  { document.getElementById(id).classList.remove('show'); }
+function showEl(id){ document.getElementById(id).style.display = ''; }
+function hideEl(id){ document.getElementById(id).style.display = 'none'; }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  TECLADO PIN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildKeypad(containerId, { onDigit, onDel, onBack }) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  ['1','2','3','4','5','6','7','8','9','‹ volver','0','⌫'].forEach(k => {
+    const btn = document.createElement('button');
+    const isBack = k.includes('volver');
+    const isDel  = k === '⌫';
+    btn.className = 'pin-key' + (isDel ? ' del' : '') + (isBack ? ' volver' : '');
+    btn.textContent = k;
+    if (isDel)  btn.onclick = onDel;
+    else if (isBack) btn.onclick = onBack;
+    else btn.onclick = () => onDigit(k);
+    c.appendChild(btn);
+  });
+}
+
+function updateDots(dotsId, n, error=false) {
+  document.getElementById(dotsId).querySelectorAll('.pin-dot').forEach((d,i) => {
+    d.classList.remove('filled','error');
+    if (error) d.classList.add('error');
+    else if (i < n) d.classList.add('filled');
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  ARRANQUE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function init() {
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) {
+    // Verificar que el usuario sigue existiendo en Firebase
+    const snap = await get(ref(db, `second_memory/usuarios/${saved}`));
+    if (snap.exists()) {
+      await entrar(saved);
+      return;
+    } else {
+      localStorage.removeItem(LS_KEY);
+    }
+  }
+  await mostrarSeleccion();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  PANTALLA 1: SELECCIÓN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function mostrarSeleccion() {
+  hide('layer-setpin'); hide('layer-pin');
+  show('layer-usuarios');
+  const lista = document.getElementById('user-list');
+  lista.innerHTML = '<div style="text-align:center;padding:10px"><span class="spinner"></span></div>';
+  const snap = await get(ref(db, 'second_memory/usuarios'));
+  lista.innerHTML = '';
+  if (snap.exists()) {
+    Object.keys(snap.val()).sort().forEach(nombre => {
+      const btn = document.createElement('button');
+      btn.className = 'user-btn';
+      btn.textContent = nombre;
+      btn.onclick = () => mostrarLoginPin(nombre, snap.val()[nombre].pin);
+      lista.appendChild(btn);
+    });
+  } else {
+    lista.innerHTML = '<p style="font-size:11px;color:var(--inkt);text-align:center">Sin usuarios todavía.<br>Crea el primero abajo.</p>';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  PANTALLA 2: SET PIN (usuario nuevo)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function iniciarCrearUsuario() {
+  const nombre = document.getElementById('nuevo-nombre').value.trim();
+  if (!nombre || nombre.length < 2) { toast('Escribe un nombre (mínimo 2 letras)', 'err'); return; }
+
+  document.getElementById('setpin-tit1').textContent = nombre.toUpperCase();
+  document.getElementById('setpin-tit2').textContent = nombre.toUpperCase();
+  document.getElementById('setpin-p1').classList.add('active');
+  document.getElementById('setpin-p2').classList.remove('active');
+  updateDots('setpin-dots1', 0); updateDots('setpin-dots2', 0);
+  document.getElementById('setpin-msg1').textContent = '';
+  document.getElementById('setpin-msg2').textContent = '';
+
+  hide('layer-usuarios'); show('layer-setpin');
+
+  let pin1 = '', pin2 = '';
+
+  buildKeypad('setpin-kp1', {
+    onDigit: async d => {
+      if (pin1.length >= 4) return;
+      pin1 += d; updateDots('setpin-dots1', pin1.length);
+      if (pin1.length === 4) {
+        await delay(200);
+        document.getElementById('setpin-p1').classList.remove('active');
+        document.getElementById('setpin-p2').classList.add('active');
+      }
+    },
+    onDel:  () => { pin1 = pin1.slice(0,-1); updateDots('setpin-dots1', pin1.length); },
+    onBack: () => { hide('layer-setpin'); mostrarSeleccion(); }
+  });
+
+  buildKeypad('setpin-kp2', {
+    onDigit: async d => {
+      if (pin2.length >= 4) return;
+      pin2 += d; updateDots('setpin-dots2', pin2.length);
+      if (pin2.length === 4) {
+        if (pin2 !== pin1) {
+          document.getElementById('setpin-msg2').textContent = 'Los PINs no coinciden';
+          updateDots('setpin-dots2', 4, true);
+          await delay(800);
+          pin2 = ''; updateDots('setpin-dots2', 0);
+          document.getElementById('setpin-msg2').textContent = '';
+        } else {
+          const hash = await sha256(pin1);
+          await set(ref(db, `second_memory/usuarios/${nombre}`), { pin: hash });
+          hide('layer-setpin');
+          toast(`✅ Usuario "${nombre}" creado`, 'ok');
+          await entrar(nombre);
+        }
+      }
+    },
+    onDel:  () => { pin2 = pin2.slice(0,-1); updateDots('setpin-dots2', pin2.length); },
+    onBack: () => {
+      pin1 = ''; pin2 = '';
+      updateDots('setpin-dots1',0); updateDots('setpin-dots2',0);
+      document.getElementById('setpin-p2').classList.remove('active');
+      document.getElementById('setpin-p1').classList.add('active');
+    }
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  PANTALLA 3: LOGIN PIN
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function mostrarLoginPin(nombre, hashGuardado) {
+  document.getElementById('pin-tit').textContent = nombre.toUpperCase();
+  document.getElementById('pin-msg').textContent = '';
+  updateDots('pin-dots', 0);
+  hide('layer-usuarios'); show('layer-pin');
+
+  let pin = '';
+  buildKeypad('pin-kp', {
+    onDigit: async d => {
+      if (pin.length >= 4) return;
+      pin += d; updateDots('pin-dots', pin.length);
+      if (pin.length === 4) {
+        const hash = await sha256(pin);
+        if (hash === hashGuardado) {
+          hide('layer-pin');
+          await entrar(nombre);
+        } else {
+          document.getElementById('pin-msg').textContent = 'PIN incorrecto';
+          updateDots('pin-dots', 4, true);
+          await delay(800);
+          pin = ''; updateDots('pin-dots', 0);
+          document.getElementById('pin-msg').textContent = '';
+        }
+      }
+    },
+    onDel:  () => { pin = pin.slice(0,-1); updateDots('pin-dots', pin.length); },
+    onBack: () => { hide('layer-pin'); mostrarSeleccion(); }
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  ENTRAR EN LA APP
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function entrar(nombre) {
+  usuario = nombre;
+  localStorage.setItem(LS_KEY, nombre);
+  hide('layer-usuarios'); hide('layer-pin'); hide('layer-setpin');
+  document.getElementById('app-hdr').style.display = 'flex';
+  document.getElementById('app-main').style.display = 'flex';
+  document.getElementById('app-footer').style.display = 'block';
+  document.getElementById('hdr-usuario').textContent = nombre;
+
+  if (unsub) unsub();
+  unsub = onValue(ref(db, `second_memory/memos/${nombre}`), snap => {
+    memos = snap.exists()
+      ? Object.entries(snap.val()).map(([k,v]) => ({ _k: k, ...v })).sort((a,b) => (b.ts||0)-(a.ts||0))
+      : [];
+    actualizarFooter();
+    limpiarFechasVencidas();
+  });
+
+  if ('Notification' in window && Notification.permission === 'default')
+    setTimeout(() => Notification.requestPermission(), 1500);
+}
+
+function cambiarUsuario() {
+  if (unsub) unsub();
+  usuario = null; memos = [];
+  localStorage.removeItem(LS_KEY);
+  document.getElementById('app-hdr').style.display = 'none';
+  document.getElementById('app-main').style.display = 'none';
+  document.getElementById('app-footer').style.display = 'none';
+  mostrarSeleccion();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  FIREBASE MEMOS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function pushMemo(memo) {
+  await push(ref(db, `second_memory/memos/${usuario}`), memo);
+}
+async function deleteMemos(keys) {
+  for (const k of keys)
+    await remove(ref(db, `second_memory/memos/${usuario}/${k}`));
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  LÓGICA APP
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function actualizarFooter() {
+  const n = memos.length;
+  document.getElementById('app-footer').textContent =
+    n + ' nota' + (n !== 1 ? 's' : '') + ' guardadas · ' + (usuario||'');
+}
+
+async function accionGuardar() {
+  const txt = document.getElementById('txtGuardar').value.trim();
+  if (!txt || !usuario) return;
+  let memo;
+  if (/^fecha[.\s:]/i.test(txt)) {
+    const contenido = txt.replace(/^fecha[.\s:]*/i,'').trim();
+    const fechaISO  = parsearFecha(contenido);
+    if (!fechaISO) { toast('⚠ No entendí la fecha. Ej: "Fecha. dentista el 15 de abril"','err'); return; }
+    memo = { texto: contenido, ts: Date.now(), esFecha: true, fechaEvento: fechaISO };
+    const dStr = new Date(fechaISO).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+    toast('✅ Guardado. Te avisaré el ' + dStr, 'ok', 4000);
+  } else {
+    memo = { texto: txt, ts: Date.now(), esFecha: false };
+    toast('✅ Guardado', 'ok');
+  }
+  await pushMemo(memo);
+  limpiarInput('guardar');
+}
+
+function accionRecordar() {
+  const txt = document.getElementById('txtRecordar').value.trim();
+  if (!txt) return;
+  const esFecha = /^fecha[s]?$/i.test(txt.trim());
+  let enc = [];
+  if (esFecha) {
+    enc = memos.filter(m => m.esFecha);
+  } else {
+    const termino = txt.replace(/^[¿?]/,'').replace(/[?]$/,'')
+      .replace(/^(dónde|donde|está|están|es|hay|qué|que|quién|quien|tienes|recuerdas|muestrame|muéstrame|busca|cuándo|cuando)\s*/i,'').trim();
+    const palabras = (termino||txt).toLowerCase().split(/\s+/).filter(p=>p.length>2);
+    if (termino) enc = buscar(termino);
+    if (!enc.length) for (const p of palabras) { enc = buscar(p); if (enc.length) break; }
+  }
+  const resp = document.getElementById('respuesta');
+  if (!enc.length) {
+    resp.innerHTML = esFecha ? 'No tienes ninguna fecha guardada.' : 'No encontré nada sobre eso.';
+  } else if (esFecha) {
+    resp.innerHTML = enc.length + ' fecha' + (enc.length>1?'s':'') + ' activa' + (enc.length>1?'s':'') + ':<br><br>' +
+      enc.sort((a,b)=>new Date(a.fechaEvento)-new Date(b.fechaEvento))
+         .map((m,i)=>`${i+1}. 📅 ${esc(m.texto)} — <b>${fmtFecha(m.fechaEvento)}</b>`).join('<br>');
+  } else if (enc.length===1) {
+    resp.innerHTML = '📌 ' + esc(enc[0].texto);
+  } else {
+    resp.innerHTML = 'Encontré ' + enc.length + ' notas:<br><br>' +
+      enc.map((m,i)=>`${i+1}. ${esc(m.texto)}`).join('<br>');
+  }
+  resp.classList.add('show');
+  document.getElementById('btnOkRecordar').classList.add('activo');
+  limpiarInput('recordar');
+}
+
+function accionBorrar() {
+  const txt = document.getElementById('txtBorrar').value.trim();
+  if (!txt) return;
+  const esFecha = /^fecha$/i.test(txt.trim());
+  const enc = esFecha ? memos.filter(m=>m.esFecha) : buscar(txt);
+  const div = document.getElementById('resultados');
+  const btnB = document.getElementById('btnBorrarSel');
+  if (!enc.length) {
+    div.innerHTML = `<div style="color:var(--inkt);font-size:12px;padding:4px 0">No encontré entradas con "${esc(txt)}".</div>`;
+    btnB.style.display = 'none'; limpiarInput('borrar'); return;
+  }
+  div.innerHTML = enc.map(m=>`
+    <div class="res-item" id="ri_${m._k}">
+      <input type="checkbox" class="res-check" id="chk_${m._k}" data-k="${m._k}" onchange="onChk('${m._k}',this)">
+      <div style="flex:1">
+        <div class="res-text">${resaltar(esc(m.texto),txt)}</div>
+        <div class="res-fecha">${fmtTs(m.ts)}${m.esFecha?' · 📅 '+fmtFecha(m.fechaEvento):''}</div>
+      </div>
+    </div>`).join('');
+  btnB.style.display = 'block'; btnB.disabled = true;
+  limpiarInput('borrar');
+}
+
+function onChk(id, el) {
+  document.getElementById('ri_'+id)?.classList.toggle('checked', el.checked);
+  document.getElementById('btnBorrarSel').disabled =
+    !document.querySelectorAll('.res-check:checked').length;
+}
+
+async function borrarSeleccionadas() {
+  const checks = [...document.querySelectorAll('.res-check:checked')];
+  if (!checks.length) return;
+  const keys = checks.map(c=>c.dataset.k).filter(Boolean);
+  await deleteMemos(keys);
+  document.getElementById('resultados').innerHTML = '';
+  document.getElementById('btnBorrarSel').style.display = 'none';
+  toast(`🗑 ${checks.length} entrada${checks.length>1?'s borradas':' borrada'}`, 'info');
+}
+
+function cerrarRespuesta() {
+  const r = document.getElementById('respuesta');
+  r.innerHTML=''; r.classList.remove('show');
+  document.getElementById('btnOkRecordar').classList.remove('activo');
+}
+
+// ── BÚSQUEDA ──────────────────────────────
+function raiz(p) {
+  p = p.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  for (const s of ['aciones','amiento','imientos','imiento','idades','ando','iendo',
+    'adas','ados','idos','idas','uras','ura','eros','eras','ero','era',
+    'istas','ista','mente','cion','nes','les','res','es','os','as','ar','er','ir','al'])
+    if (p.endsWith(s) && p.length-s.length>=3) return p.slice(0,-s.length);
+  return p;
+}
+function buscar(termino) {
+  const pals = termino.toLowerCase().split(/\s+/).filter(Boolean);
+  return memos.filter(m=>{
+    const t = m.texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return pals.every(p=>{
+      if (t.includes(p)) return true;
+      const pr = raiz(p);
+      return t.split(/\s+/).some(w=>{ const wr=raiz(w); return wr.startsWith(pr)||pr.startsWith(wr); });
+    });
+  });
+}
+function resaltar(html, term) {
+  return term.split(/\s+/).filter(Boolean).reduce((h,p)=>
+    h.replace(new RegExp(escRx(p),'gi'),s=>`<mark>${s}</mark>`), html);
+}
+
+// ── FECHAS ────────────────────────────────
+const MESES={enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12};
+function parsearFecha(txt) {
+  const m = txt.match(/\b(\d{1,2})\s+de\s+([a-záéíóúñ]+)(?:\s+(?:de\s+)?(\d{4}))?/i);
+  if (!m) return null;
+  const mes = MESES[m[2].toLowerCase()]; if (!mes) return null;
+  const hoy = new Date();
+  let anyo = m[3]?parseInt(m[3]):hoy.getFullYear();
+  const d = new Date(anyo, mes-1, parseInt(m[1]));
+  if (!m[3] && d<hoy) d.setFullYear(anyo+1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function limpiarFechasVencidas() {
+  const ayer = Date.now()-86400000;
+  const vencidas = memos.filter(m=>m.esFecha && new Date(m.fechaEvento).getTime()<=ayer);
+  if (vencidas.length) deleteMemos(vencidas.map(m=>m._k).filter(Boolean));
+  // SW
+  const mf = memos.filter(m=>m.esFecha);
+  if ('serviceWorker' in navigator)
+    navigator.serviceWorker.ready.then(r=>{ if(r.active) r.active.postMessage({tipo:'guardar-memos',memos:mf}); });
+}
+
+// ── VOZ ───────────────────────────────────
+let micActivo=null, recognition=null;
+function toggleMic(cual) {
+  if (!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){toast('Voz no disponible','err');return;}
+  if (micActivo===cual&&recognition){recognition.stop();return;}
+  if (recognition) recognition.stop();
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR(); recognition.lang='es-ES'; recognition.continuous=false; recognition.interimResults=true;
+  micActivo=cual;
+  const btnId='mic'+cual[0].toUpperCase()+cual.slice(1);
+  const txtId='txt'+cual[0].toUpperCase()+cual.slice(1);
+  document.getElementById(btnId).classList.add('grabando');
+  recognition.onresult=e=>{
+    let t=''; for(let i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
+    document.getElementById(txtId).value=t; autoResize(document.getElementById(txtId));
+  };
+  recognition.onend=()=>{ document.getElementById(btnId).classList.remove('grabando'); micActivo=null; recognition=null; };
+  recognition.onerror=()=>{ document.getElementById(btnId).classList.remove('grabando'); micActivo=null; recognition=null; toast('Error en el micrófono','err'); };
+  recognition.start();
+}
+
+// ── HELPERS ───────────────────────────────
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';}
+function limpiarInput(cual){const el=document.getElementById('txt'+cual[0].toUpperCase()+cual.slice(1));el.value='';el.style.height='auto';}
+function fmtTs(ts){return new Date(ts).toLocaleString('es-ES',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}
+function fmtFecha(iso){return new Date(iso).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escRx(s){return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  EVENTOS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+document.getElementById('btn-crear').onclick        = iniciarCrearUsuario;
+document.getElementById('nuevo-nombre').onkeydown   = e => { if(e.key==='Enter') iniciarCrearUsuario(); };
+document.getElementById('btn-guardar').onclick      = accionGuardar;
+document.getElementById('btn-recordar').onclick     = accionRecordar;
+document.getElementById('btn-borrar').onclick       = accionBorrar;
+document.getElementById('btnOkRecordar').onclick    = cerrarRespuesta;
+document.getElementById('btnBorrarSel').onclick     = borrarSeleccionadas;
+document.getElementById('btn-cambiar-usuario').onclick = cambiarUsuario;
+document.getElementById('micGuardar').onclick  = () => toggleMic('guardar');
+document.getElementById('micRecordar').onclick = () => toggleMic('recordar');
+document.getElementById('micBorrar').onclick   = () => toggleMic('borrar');
+document.getElementById('txtGuardar').onkeydown  = e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();accionGuardar();} };
+document.getElementById('txtRecordar').onkeydown = e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();accionRecordar();} };
+document.getElementById('txtBorrar').onkeydown   = e => { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();accionBorrar();} };
+
+// exponer para HTML inline (checkboxes dinámicos)
+window.onChk = onChk;
+window.autoResize = autoResize;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+init();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .then(r => console.log("SW:", r.scope))
+      .catch(e => console.log("SW error:", e));
+  });
+}
+</script>
+</body>
+</html>
